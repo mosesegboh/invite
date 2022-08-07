@@ -1,0 +1,4 @@
+parameters:
+    accepted: 2
+    declined: 1
+    no_response: 0

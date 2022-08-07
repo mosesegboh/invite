@@ -1,0 +1,328 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Send Notifications{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="card text-center" style="margin-top:100px; !important">
+            <div class="card-body">
+                <form id="invitations_form" name="invitation">
+                        <div class="card text-center" style="">
+                            <h2 class="card-header">Send Notifications</h2>
+                            
+                            <div class="card-body">
+                            
+                            <div class="mb-3">
+                            <div class="row">
+                            <div class="col-6 col-md-3"></div>
+                            <div class="col-6 col-md-6"><div class="form-group row">
+                            <div class="" id="message" role="alert">
+                            </div>
+                                <label for="subject" class="col-sm-2 col-form-label">Subject</label>
+                                <div class="col-sm-10">
+                                <input 
+                                    type="text" 
+                                    value="" 
+                                    name="subject" 
+                                    id="subject" 
+                                    class="form-control" 
+                                    placeholder="subject"
+                                    autocomplete="subject" 
+                                    required 
+                                    autofocus
+                                >
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <label for="inputPassword" class="col-sm-2 col-form-label">Send To</label>
+                                    <div class="col-sm-10">
+                                    <input 
+                                        name="send_to" 
+                                        id="user-search" 
+                                        class="form-control" 
+                                        autocomplete="send_to" 
+                                        placeholder="send to"
+                                        required
+                                    >
+                                    <div class="user-list-options" style="display: none; position: absolute; z-index:1; background-color:#e6e5e3;" id="user-list">
+                                        <ul class="dropdown-menu-two" style="position:relative;" id="drop-down"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group row">
+                                <label for="inputPassword" class="col-sm-2 col-form-label">Message</label>
+                                <div class="col-sm-10">
+                                <textarea 
+                                    name="message" 
+                                    id="invite-message" 
+                                    class="form-control" 
+                                    autocomplete="message" 
+                                    placeholder="Message"
+                                    required
+                                    rows="5" 
+                                    cols="50"
+                                ></textarea>
+                            </div>
+
+                            <input 
+                                type="hidden" 
+                                name="_csrf_token"
+                                value="{{ csrf_token('authenticate') }}"
+                                >
+
+                            <input 
+                                type="hidden" 
+                                name="sender"
+                                {% if app.user %}
+                                    value="{{ app.user.id }}"
+                                {% endif %}
+                                >
+                            </div></div>
+                            <div class="col-6 col-md-3"></div>
+                            </div>
+                        </div>
+                    
+                        <button type="submit" class="btn btn-primary">Send Invite</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.1/jquery.validate.min.js"></script>
+    <script>
+        $('#user-search').keyup(function(){
+                var query = $(this).val();
+        
+                if (query.length != 0)
+                {
+                    var _token = $('input[name="invitations_form[_token]"]').val();
+                    $.ajax({
+                        url: "search",
+                        method: "POST",
+                        data: {query: query,
+                            _token: _token
+                            },
+                        success: function(data){
+                            if(data){
+                                console.log(data.data.length);
+                                res = data.data;
+                                $('#user-list').fadeIn();
+                                $('#drop-down').css("display","block");
+                                $('#drop-down').html('');
+                                var list = '';
+                                $.each(res, function(index, value){
+                                    list += '<li style="cursor: pointer;">'+ value.new_email +'</li>';
+                                });
+                                $('#drop-down').html(list);
+                            }
+                        }
+                    });
+                }else{
+                    $('#user-list').fadeOut(); 
+                }
+            });
+            
+            $(document).on('click', 'li', function(){  
+                $('#user-search').val($(this).text());
+                $('#user-list').fadeOut();  
+            }); 
+        $(document).click(function() {
+            $('#user-list').fadeOut();  
+        });
+
+        //form submission form
+        $("form").submit(function (e) {
+            e.preventDefault();
+            
+            var subject = $('#subject').val();
+            var message = $('#invite-message').val();
+            var send_to = $('#user-search').val();
+            var sender = $('#sender').val();
+            var _csrf_token = $('input[name="_csrf_token"]').val();
+
+            $.ajax({
+                    url: "invite",
+                    method: "POST",
+                    data: {
+                        subject: subject,
+                        message: message,
+                        send_to: send_to,
+                        sender: sender,
+                        },
+                    success: function(data){
+                        if(data){
+                            $("#message").addClass("alert alert-success");
+                            $("#message").text("");
+                            $("#message").text(data.data);
+                        }
+                        
+                    //load_unseen_notifications(); 
+                    $.ajax({
+                    url: "get-invitations",
+                    method: "POST",
+                    data: {},
+                    success: function(data){
+                            var res = data.data
+                            $('.dropdown-menu').html('');
+                            $('.count').html('');
+                            $.each(res, function(index, value){
+                                list = '<li class="myList"><a href="#"><strong>'+value.subject+'</strong>:  <em><p style="font-size:12px;">'+value.message+'</p></em></a><span>&nbsp;&nbsp;<button class="btn btn-primary"  onclick="myFunction()" id="'+value.new_id+'" type="button" class="btn btn-primary">Accept</button>&nbsp;<button class="btn btn-primary"  onclick="myFunctionDecline()" id="'+value.new_id+'" type="button" class="btn btn-primary">Decline</button></span></li><hr>';
+                                $('.dropdown-menu').append(list);
+                            });
+                            if(data.count > 0)
+                            {
+                            $('.count').html('<strong>'+data.count+'</strong>');
+                            }
+                            document.getElementById("invitations_form").reset();
+                        }
+                    });
+                }
+            });
+        });
+
+        //load notifications
+        $(document).ready(function(){
+            function load_unseen_notifications(invitations='')
+            {
+            $.ajax({
+                    url: "get-invitations",
+                    method: "POST",
+                    data: {},
+                    success: function(data){
+                        var res = data.data
+                        $('.dropdown-menu').html('');
+                        $('.count').html('');
+                        $.each(res, function(index, value){
+                            list = '<li class="myList"><a href="#"><strong>'+value.subject+'</strong>:  <em><p style="font-size:12px;">'+value.message+'</p></em></a><span>&nbsp;&nbsp;<button class="btn btn-primary"  onclick="myFunction()" id="'+value.new_id+'" type="button" class="btn btn-primary">Accept</button>&nbsp;<button class="btn btn-primary"  onclick="myFunctionDecline()" id="'+value.new_id+'" type="button" class="btn btn-primary">Decline</button></span></li><hr>';
+                            $('.dropdown-menu').append(list);
+                        });
+                        if(data.count > 0)
+                        {
+                        $('.count').html('<strong>'+data.count+'</strong>');
+                        }
+                    }
+                });
+            }
+
+            load_unseen_notifications(); 
+        })
+
+        function myFunction() {
+            var id = event.srcElement.id
+            $.ajax({
+                url: "accept",
+                method: "POST",
+                data: {
+                    id: id,
+                    },
+                success: function(data){
+                    $("#message").addClass("alert alert-success");
+                    $("#message").text("");
+                    $("#message").text(data.data);
+
+                    //load_unseen_notifications(); 
+                    $.ajax({
+                    url: "get-invitations",
+                    method: "POST",
+                    data: {},
+                    success: function(data){
+                            var res = data.data
+                            $('.dropdown-menu').html('');
+                            $('.count').html('');
+                            $.each(res, function(index, value){
+                                list = '<li class="myList"><a href="#"><strong>'+value.subject+'</strong>:  <em><p style="font-size:12px;">'+value.message+'</p></em></a><span>&nbsp;&nbsp;<button class="btn btn-primary"  onclick="myFunction()" id="'+value.new_id+'" type="button" class="btn btn-primary">Accept</button>&nbsp;<button class="btn btn-primary"  onclick="myFunctionDecline()" id="'+value.new_id+'" type="button" class="btn btn-primary">Decline</button></span></li><hr>';
+                                $('.dropdown-menu').append(list);
+                            });
+                            if(data.count > 0)
+                            {
+                            $('.count').html('<strong>'+data.count+'</strong>');
+                            }
+                            document.getElementById("invitations_form").reset();
+                        }
+                    });
+                }
+            });
+            }
+
+        function myFunctionDecline() {
+            var id = event.srcElement.id
+            $.ajax({
+                url: "decline",
+                method: "POST",
+                data: {
+                    id: id,
+                    },
+                success: function(data){
+                    $("#message").addClass("alert alert-success");
+                    $("#message").text("");
+                    $("#message").text(data.data);
+
+                    //load_unseen_notifications(); 
+                    $.ajax({
+                    url: "get-invitations",
+                    method: "POST",
+                    data: {},
+                    success: function(data){
+                            var res = data.data
+                            $('.dropdown-menu').html('');
+                            $('.count').html('');
+                            $.each(res, function(index, value){
+                                list = '<li class="myList"><a href="#"><strong>'+value.subject+'</strong>:  <em><p style="font-size:12px;">'+value.message+'</p></em></a><span>&nbsp;&nbsp;<button class="btn btn-primary"  onclick="myFunction()" id="'+value.new_id+'" type="button" class="btn btn-primary">Accept</button>&nbsp;<button class="btn btn-primary"  onclick="myFunctionDecline()" id="'+value.new_id+'" type="button" class="btn btn-primary">Decline</button></span></li><hr>';
+                                $('.dropdown-menu').append(list);
+                            });
+                            if(data.count > 0)
+                            {
+                            $('.count').html('<strong>'+data.count+'</strong>');
+                            }
+                            document.getElementById("invitations_form").reset();
+                        }
+                    });
+                }
+            });
+        }
+            
+            
+    $(function() {
+        $("form[name='invitation']").validate({
+          rules: {
+            subject: {required: true,
+                  minlength: 3,
+                  maxlength: 15,
+                  },
+            send_to: {required: true,
+                  minlength: 3,
+                  maxlength: 20,
+                  },
+            message: {required: true,
+                  minlength: 3,
+                  maxlength: 15,
+          },
+          messages: {
+            subject: { required: "Please enter a subject",
+                    minlength : "no less than 3 characters",
+                    maxlength : "no more than 15 characters",
+                  },
+            send_to: { required: "Please enter a receiver",
+                    minlength : "no less than 3 characters",
+                    maxlength : "no more than 20 characters",
+                  },
+            message: { required: "Please enter a message",
+                    minlength : "no less than 3 characters",
+                    maxlength : "no more than 15 characters",
+                  },
+          },
+          errorElement : 'div',
+          errorLabelContainer: '.errorTxt',
+          submitHandler: function(form) {
+            form.submit();
+          }}
+        });
+      });
+    </script>
+{% endblock %}
